@@ -84,7 +84,10 @@ Ce projet suit le pattern **Page Object Model (POM)** :
 - **Features** : Décrivent les scénarios en langage Gherkin (Given/When/Then)
 - **Steps** : Implémentent les étapes décrites dans les features
 - **Pages** : Encapsulent les interactions avec les éléments de la page (selectors, actions)
-1. Recherche de produits (`features/search.feature`)
+
+## 🎯 Scénarios couverts
+
+### 1. Recherche de produits (`features/search.feature`)
 - **Scénario** : Rechercher un produit existant
   - Navigation vers la page d'accueil
   - Recherche du produit "Dress"
@@ -95,21 +98,15 @@ Ce projet suit le pattern **Page Object Model (POM)** :
   - Navigation vers la page d'accueil
   - Sélection du premier produit disponible
   - Ajout du produit au panier
-  - Vérification que le produit appara
-    When j'ajoute un produit au panier
-    Then le produit apparait dans le panier
-```
-
-## 🎯 Scénarios couverts
-
-### Search
-- Recherche de produits par mot-clé
-
-### Cart
-- Ajout de produits au panier
-- Vérification de la présence du produit dans le panier
+  - Vérification que le produit apparait dans le panier
 
 ## 📊 Rapports
+
+Après l'exécution des tests, un rapport HTML est généré :
+```
+reports/cucumber-report.html
+```
+
 Ouvrez ce fichier dans un navigateur pour visualiser les résultats détaillés des tests, incluant :
 - Scénarios passés/échoués
 - Durée d'exécution
@@ -135,23 +132,54 @@ Ouvrez ce fichier dans un navigateur pour visualiser les résultats détaillés 
 ## 🐛 Difficultés rencontrées et solutions
 
 ### 1. **Strict Mode Violation - Sélecteurs ambigus**
+
 **Problème** : Playwright levait une erreur "strict mode violation" lors du clic sur le bouton "Add to cart" car le sélecteur `.add-to-cart` résolvait à 2 éléments.
 
-**Cause** : Le sélecteur était trop générique et correspondait à plusieurs boutons dans le DOM.
+**Message d'erreur** :
+```
+Error: strict mode violation: locator('.product-image-wrapper').first()
+.locator('.add-to-cart') resolved to 2 elements
+```
 
-**Solution** : Utilisation du pattern `.first()` pour sélectionner précisément le premier élément correspondant :
+**Cause** : Le sélecteur était trop générique et correspondait à plusieurs boutons dans le DOM. Playwright en mode strict refuse cette ambiguïté pour éviter les clics erronés.
+
+**Solution appliquée** : Utilisation du pattern `.first()` pour sélectionner précisément le premier élément correspondant :
+
 ```typescript
+// ❌ AVANT (Erreur - 2 éléments résolus)
 await this.page.locator('.product-image-wrapper')
   .first()
   .locator('.add-to-cart')
-  .first()  // ← Added for strict mode compliance
+  .click();
+
+// ✅ APRÈS (Fonctionne - 1 seul élément)
+await this.page.locator('.product-image-wrapper')
+  .first()
+  .locator('.add-to-cart')
+  .first()  // ← Précise explicitement le premier élément
   .click();
 ```
 
-### 2. **Navigation vers l'application externe**
-**Problème** : Les tests doivent naviguer vers https://www.automationexercise.com/
+**Leçons apprises** :
+- Playwright strict mode force les bonnes pratiques
+- L'isolation des éléments est critique en automatisation
+- Toujours vérifier la spécificité des sélecteurs CSS
 
-**Solution** : Configuration de l'URL de base dans les hooks et utilisation de chemins relatifs pour la navigation.
+### 2. **Navigation vers l'application externe**
+
+**Problème** : Les tests doivent naviguer vers https://www.automationexercise.com/ qui est une application externe.
+
+**Cause** : Besoin de configurer correctement l'URL de base et gérer les timeouts pour les chargements de page externes.
+
+**Solution** : Configuration de l'URL de base dans les hooks (Before) et utilisation de `waitFor()` pour s'assurer que les éléments sont chargés.
+
+```typescript
+// hooks.ts
+Before(async function() {
+  this.page = await context.newPage();
+  await this.page.goto('https://www.automationexercise.com/');
+});
+```
 
 ## 📝 Détails de l'implémentation
 
@@ -171,5 +199,7 @@ await this.page.locator('.product-image-wrapper')
 ### Hooks (`steps/hooks.ts`)
 - **Before** : Initialisation du navigateur et navigation
 - **After** : Capture d'écran en cas d'erreur et fermeture du navigateur
+
+
 
 
